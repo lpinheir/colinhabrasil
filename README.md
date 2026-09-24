@@ -16,30 +16,35 @@ npm run build && npm start
 
 ## Fonte de dados (TSE)
 
-Os dados vêm da API pública do **DivulgaCandContas** do TSE:
+Os candidatos vêm do arquivo oficial do Portal de Dados Abertos do TSE:
+[Candidatos 2026](https://dadosabertos.tse.jus.br/dataset/candidatos-2026)
+(`https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_2026.zip`).
 
-| O quê | Endpoint |
-| --- | --- |
-| Eleições (onde está o ID de 2026: `20322002026`) | `GET /divulga/rest/v1/eleicao/ordinarias` |
-| Candidatos por UF e cargo | `GET /divulga/rest/v1/candidatura/listar/2026/{UF}/20322002026/{codCargo}/candidatos` |
-| Foto | `GET /divulga/rest/arquivo/img/20322002026/{idCandidato}/{UF}` |
+A API do DivulgaCandContas bloqueia servidores em nuvem (incluindo a Vercel) e
+não aceita chamadas diretas do navegador (sem CORS). Por isso o site não
+consulta o TSE a cada busca. Em vez disso:
 
-Base: `https://divulgacandcontas.tse.jus.br`. Para presidente, a UF é `BR`.
-Códigos de cargo: 1 Presidente, 3 Governador, 5 Senador, 6 Dep. Federal,
-7 Dep. Estadual, 8 Dep. Distrital (DF).
+1. `scripts/sync-tse.mjs` baixa o ZIP oficial, lê os CSVs por UF e gera um
+   JSON compacto por UF em `public/data/candidatos/{UF}.json` (presidente em
+   `BR.json`). Guarda só cargo, número, nome de urna, partido, número do
+   partido, ID do candidato e situação.
+2. A GitHub Action `.github/workflows/sync-tse.yml` roda esse script a cada 6
+   horas e faz commit se algo mudou. A Vercel republica o site sozinha.
+3. No navegador, `getCandidate()` (`src/lib/candidates.ts`) baixa o arquivo da
+   UF uma única vez e busca o número nele.
 
-Campos usados da listagem: `id`, `numero`, `nomeUrna`, `partido.sigla`,
-`descricaoSituacao`. O número do partido são os dois primeiros dígitos do
-número do candidato.
+As fotos são carregadas pelo navegador direto do TSE:
+`https://divulgacandcontas.tse.jus.br/divulga/rest/arquivo/img/20322002026/{id}/{UF}`.
+
+Para atualizar os dados manualmente (por exemplo, se o TSE bloquear a Action):
+
+```bash
+npm run sync:tse                   # baixa do TSE
+npm run sync:tse -- caminho.zip    # usa um ZIP baixado pelo navegador
+git add public/data/candidatos && git commit -m "Atualiza dados do TSE" && git push
+```
 
 Cargos, códigos e quantidade de dígitos ficam em `src/config/election.ts`.
-
-## Cache
-
-`src/lib/tse.ts` baixa a listagem de um cargo em uma UF uma única vez e a
-guarda em memória no servidor por 1 hora. As consultas seguintes para a
-mesma UF/cargo não chamam o TSE de novo. A variável `TSE_API_BASE` permite
-apontar para outra base (por exemplo, um mock em testes).
 
 ## Impressão
 

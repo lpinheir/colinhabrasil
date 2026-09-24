@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import type { Office } from "@/config/election";
 import type { Candidate } from "@/lib/types";
 
@@ -79,7 +81,8 @@ function ColinhaRow({ office, number, candidate }: ColinhaEntry) {
 }
 
 function Photo({ candidate }: { candidate?: Candidate }) {
-  if (!candidate) {
+  const [failedUrl, setFailedUrl] = useState<string>();
+  if (!candidate || failedUrl === candidate.photoUrl) {
     return (
       <div
         aria-hidden
@@ -97,6 +100,7 @@ function Photo({ candidate }: { candidate?: Candidate }) {
       src={candidate.photoUrl}
       alt={`Foto de ${candidate.name}`}
       referrerPolicy="no-referrer"
+      onError={() => setFailedUrl(candidate.photoUrl)}
       className="photo h-[72px] w-14 shrink-0 rounded border border-neutral-300 bg-neutral-100 object-cover"
     />
   );

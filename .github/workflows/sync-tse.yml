@@ -1,0 +1,45 @@
+name: Atualizar candidatos do TSE
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/sync-tse.mjs
+      - .github/workflows/sync-tse.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-tse
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Baixar arquivo oficial do TSE e gerar JSON por UF
+        run: npm run sync:tse
+
+      - name: Salvar alterações
+        run: |
+          git add public/data/candidatos
+          if git diff --cached --quiet; then
+            echo "Sem mudanças nos dados do TSE."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Atualiza dados de candidatos do TSE"
+          git push

@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import {
+  ELECTION,
   OFFICES,
   STATES,
   isStateCode,
@@ -10,6 +11,7 @@ import {
   type OfficeKey,
 } from "@/config/election";
 import { officeInfoKey, type OfficeInfoKey } from "@/config/offices-info";
+import { DataUnavailableError, getCandidate } from "@/lib/candidates";
 import type { Candidate } from "@/lib/types";
 
 import { Colinha } from "./Colinha";
@@ -59,15 +61,19 @@ export function ColinhaApp() {
       }
 
       setLookups((l) => ({ ...l, [office.key]: { status: "loading" } }));
-      const qs = new URLSearchParams({ uf: state, cargo: office.key, numero: number });
-      fetch(`/api/candidato?${qs}`)
-        .then(async (res): Promise<Lookup> => {
-          if (res.status === 404) return { status: "notfound" };
-          const body = await res.json();
-          if (!res.ok) return { status: "error", message: body.error ?? "Erro na consulta" };
-          return { status: "found", candidate: body.candidate };
-        })
-        .catch((): Lookup => ({ status: "error", message: "Falha de conexão" }))
+      getCandidate({ year: ELECTION.year, state, office: office.key, number })
+        .then((candidate): Lookup =>
+          candidate ? { status: "found", candidate } : { status: "notfound" },
+        )
+        .catch(
+          (err): Lookup => ({
+            status: "error",
+            message:
+              err instanceof DataUnavailableError
+                ? "Os dados do TSE para este estado ainda não foram carregados no site."
+                : "Falha ao carregar os dados. Verifique sua conexão e tente de novo.",
+          }),
+        )
         .then((result) => {
           if (requested.current[office.key] !== key) return;
           setLookups((l) => ({ ...l, [office.key]: result }));

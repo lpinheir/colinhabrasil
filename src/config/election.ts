@@ -1,11 +1,12 @@
 /**
  * Configuração da eleição geral de 2026.
  *
- * Fonte de dados: DivulgaCandContas (TSE)
- *   https://divulgacandcontas.tse.jus.br/divulga/
+ * Fonte de dados: arquivo oficial de candidatos do TSE
+ *   https://dadosabertos.tse.jus.br/dataset/candidatos-2026
+ * espelhado em public/data/candidatos/{UF}.json por scripts/sync-tse.mjs.
  *
- * - ID da eleição geral de 2026 (1º turno, 04/10/2026): 20322002026,
- *   conforme `GET /divulga/rest/v1/eleicao/ordinarias`.
+ * - ID da eleição geral de 2026 no DivulgaCandContas (usado nas fotos):
+ *   20322002026.
  * - Códigos de cargo do TSE: 1 Presidente, 3 Governador, 5 Senador,
  *   6 Deputado Federal, 7 Deputado Estadual, 8 Deputado Distrital.
  *
@@ -23,8 +24,8 @@
 export const ELECTION = {
   year: 2026,
   electionId: "20322002026",
-  apiBase:
-    process.env.TSE_API_BASE ?? "https://divulgacandcontas.tse.jus.br/divulga/rest",
+  photoBase: "https://divulgacandcontas.tse.jus.br/divulga/rest/arquivo/img",
+  dataPath: "/data/candidatos",
 } as const;
 
 export type OfficeKey =
