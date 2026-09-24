@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   ELECTION,
@@ -12,17 +12,9 @@ import {
 } from "@/config/election";
 import { officeInfoKey, type OfficeInfoKey } from "@/config/offices-info";
 import { DataUnavailableError, getCandidate } from "@/lib/candidates";
-import type { Candidate } from "@/lib/types";
 
-import { Colinha } from "./Colinha";
+import { Colinha, type Lookup } from "./Colinha";
 import { OfficeGuide } from "./OfficeGuide";
-
-type Lookup =
-  | { status: "idle" }
-  | { status: "loading" }
-  | { status: "found"; candidate: Candidate }
-  | { status: "notfound" }
-  | { status: "error"; message: string };
 
 const emptyNumbers = Object.fromEntries(OFFICES.map((o) => [o.key, ""])) as Record<OfficeKey, string>;
 
@@ -91,8 +83,8 @@ export function ColinhaApp() {
       <header className="no-print">
         <h1 className="text-2xl font-extrabold tracking-tight">Colinha Eleitoral 2026</h1>
         <p className="mt-1 text-sm text-neutral-600">
-          Escolha seu estado e digite os números dos seus candidatos. Os dados vêm do TSE.
-          Nada é salvo.
+          Escolha seu estado e toque nos quadradinhos de cada cargo para digitar o número do
+          seu candidato. Os dados vêm do TSE. Nada é salvo.
         </p>
       </header>
 
@@ -103,52 +95,36 @@ export function ColinhaApp() {
         onItemToggle={(key) => setGuideItem((k) => (k === key ? null : key))}
       />
 
-      <form className="no-print flex flex-col gap-4" onSubmit={(e) => e.preventDefault()}>
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-semibold">Estado</span>
-          <select
-            value={uf}
-            onChange={(e) => setUf(e.target.value)}
-            className="h-12 rounded-lg border border-neutral-300 bg-white px-3 text-base"
-          >
-            <option value="">Selecione a UF</option>
-            {STATES.map((s) => (
-              <option key={s.code} value={s.code}>
-                {s.name} ({s.code})
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {offices.map((office) => (
-          <NumberField
-            key={office.key}
-            label={office.label}
-            digits={office.digits}
-            value={numbers[office.key]}
-            disabled={!state}
-            lookup={lookups[office.key] ?? { status: "idle" }}
-            onChange={(value) => setNumbers((n) => ({ ...n, [office.key]: value }))}
-            onInfo={() => showOfficeInfo(office.key)}
-            warning={
-              office.key === "SENADOR_2" && sameSenator
-                ? "O mesmo número foi informado nas duas vagas de senador. A urna não aceita votar duas vezes no mesmo candidato."
-                : undefined
-            }
-          />
-        ))}
-      </form>
+      <label className="no-print flex flex-col gap-1">
+        <span className="text-sm font-semibold">Estado</span>
+        <select
+          value={uf}
+          onChange={(e) => setUf(e.target.value)}
+          className="h-12 rounded-lg border border-neutral-300 bg-white px-3 text-base"
+        >
+          <option value="">Selecione a UF</option>
+          {STATES.map((s) => (
+            <option key={s.code} value={s.code}>
+              {s.name} ({s.code})
+            </option>
+          ))}
+        </select>
+      </label>
 
       <Colinha
         stateName={STATES.find((s) => s.code === state)?.name}
-        entries={offices.map((office) => {
-          const lookup = lookups[office.key];
-          return {
-            office,
-            number: numbers[office.key],
-            candidate: lookup?.status === "found" ? lookup.candidate : undefined,
-          };
-        })}
+        disabled={!state}
+        onNumberChange={(key, value) => setNumbers((n) => ({ ...n, [key]: value }))}
+        onInfo={showOfficeInfo}
+        entries={offices.map((office) => ({
+          office,
+          number: numbers[office.key],
+          lookup: lookups[office.key] ?? { status: "idle" },
+          warning:
+            office.key === "SENADOR_2" && sameSenator
+              ? "Mesmo número nas duas vagas de senador. A urna não aceita votar duas vezes no mesmo candidato."
+              : undefined,
+        }))}
       />
 
       <div className="no-print flex flex-col gap-3">
@@ -171,94 +147,4 @@ export function ColinhaApp() {
       </div>
     </div>
   );
-}
-
-function NumberField({
-  label,
-  digits,
-  value,
-  disabled,
-  lookup,
-  onChange,
-  onInfo,
-  warning,
-}: {
-  label: string;
-  digits: number;
-  value: string;
-  disabled: boolean;
-  lookup: Lookup;
-  onChange: (value: string) => void;
-  onInfo: () => void;
-  warning?: string;
-}) {
-  const id = useId();
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-baseline justify-between gap-2">
-        <label htmlFor={id} className="text-sm font-semibold">
-          {label} <span className="font-normal text-neutral-500">({digits} dígitos)</span>
-        </label>
-        <button
-          type="button"
-          onClick={onInfo}
-          className="shrink-0 text-xs font-semibold text-neutral-700 underline underline-offset-2"
-        >
-          O que faz?
-        </button>
-      </div>
-      <input
-        id={id}
-        type="text"
-        inputMode="numeric"
-        autoComplete="off"
-        pattern="[0-9]*"
-        maxLength={digits}
-        placeholder={disabled ? "Selecione a UF primeiro" : "0".repeat(digits)}
-        disabled={disabled}
-        value={value}
-        onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, digits))}
-        className="h-12 rounded-lg border border-neutral-300 bg-white px-3 font-mono text-xl tracking-[0.3em] disabled:bg-neutral-100 disabled:text-base disabled:tracking-normal"
-      />
-      <LookupStatus lookup={lookup} />
-      {warning && <span className="text-sm text-amber-700">{warning}</span>}
-    </div>
-  );
-}
-
-function LookupStatus({ lookup }: { lookup: Lookup }) {
-  switch (lookup.status) {
-    case "loading":
-      return (
-        <span className="flex items-center gap-2 text-sm text-neutral-600" aria-live="polite">
-          <span className="h-3 w-3 animate-spin rounded-full border-2 border-neutral-400 border-t-transparent" />
-          Buscando no TSE…
-        </span>
-      );
-    case "found":
-      return (
-        <span className="text-sm text-green-700" aria-live="polite">
-          ✓ Candidato encontrado: <strong>{lookup.candidate.name}</strong> ({lookup.candidate.party})
-          {lookup.candidate.status && (
-            <span className="block text-xs text-neutral-500">
-              Situação no TSE: {lookup.candidate.status}
-            </span>
-          )}
-        </span>
-      );
-    case "notfound":
-      return (
-        <span className="text-sm text-red-700" aria-live="polite">
-          Nenhum candidato encontrado
-        </span>
-      );
-    case "error":
-      return (
-        <span className="text-sm text-red-700" aria-live="polite">
-          {lookup.message}
-        </span>
-      );
-    default:
-      return null;
-  }
 }

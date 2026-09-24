@@ -38,6 +38,7 @@ body {
   }
 
   .colinha-row {
+    background: #fff !important;
     break-inside: avoid;
     padding-top: 4mm;
     padding-bottom: 4mm;
@@ -53,5 +54,7 @@ body {
     width: 10mm;
     height: 12mm;
     font-size: 20pt;
+    border-color: #000 !important;
+    box-shadow: none !important;
   }
 }
