@@ -6,6 +6,8 @@ import type { OfficeKey, StateCode } from "@/config/election";
 import { OFFICE_INFO_ORDER, type OfficeInfoKey } from "@/config/offices-info";
 import { DataUnavailableError, listCandidates, type ListedCandidate } from "@/lib/candidates";
 
+import { OlhoNaCotaLink } from "./OlhoNaCotaLink";
+
 const PAGE_SIZE = 100;
 
 function officeLabel(office: OfficeInfoKey, state?: StateCode) {
@@ -218,11 +220,11 @@ function CandidateItem({
 }) {
   const [photoFailed, setPhotoFailed] = useState(false);
   return (
-    <li className="border-b border-neutral-100 last:border-b-0">
+    <li className="flex items-center border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50">
       <button
         type="button"
         onClick={onPick}
-        className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-neutral-50"
+        className="flex min-w-0 flex-1 items-center gap-3 py-2 pl-4 pr-2 text-left"
       >
         {photoFailed ? (
           <span aria-hidden className="h-12 w-9 shrink-0 rounded bg-neutral-100" />
@@ -250,6 +252,7 @@ function CandidateItem({
           {selected && <span className="block text-[11px] text-green-700">✓ na colinha</span>}
         </span>
       </button>
+      <OlhoNaCotaLink candidate={candidate} className="w-24 shrink-0 pr-4 text-center" />
     </li>
   );
 }

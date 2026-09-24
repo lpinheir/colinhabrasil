@@ -8,7 +8,14 @@ import {
 import type { OfficeInfoKey } from "@/config/offices-info";
 import type { Candidate } from "@/lib/types";
 
-type Row = [name: string, party: string, partyNumber: string, id: string, status: string];
+type Row = [
+  name: string,
+  party: string,
+  partyNumber: string,
+  id: string,
+  status: string,
+  camaraId?: string,
+];
 
 /** Formato de public/data/candidatos/{UF}.json (ver scripts/sync-tse.mjs). */
 type StateFile = {
@@ -16,7 +23,7 @@ type StateFile = {
 };
 
 function toCandidate(row: Row, number: string, circunscricao: string): Candidate {
-  const [name, party, partyNumber, id, status] = row;
+  const [name, party, partyNumber, id, status, camaraId] = row;
   return {
     number,
     name,
@@ -24,6 +31,7 @@ function toCandidate(row: Row, number: string, circunscricao: string): Candidate
     partyNumber,
     photoUrl: `${ELECTION.photoBase}/${ELECTION.electionId}/${id}/${circunscricao}`,
     status: status || undefined,
+    camaraId,
   };
 }
 

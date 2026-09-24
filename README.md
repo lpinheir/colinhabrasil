@@ -56,6 +56,23 @@ Cargos, códigos e quantidade de dígitos ficam em `src/config/election.ts`.
   nome ou número e clicar num candidato para colocá-lo na colinha. A lista
   segue a ordem da urna por cargo e a ordem alfabética dentro de cada cargo.
 
+## Link para o Olho na Cota
+
+Cada candidato (na colinha e no painel) tem o link "Ver no Olho na Cota", que
+abre em nova aba e não aparece na impressão:
+
+- Se o candidato é deputado federal na legislatura atual, o link vai direto ao
+  perfil: `https://olhonacota.com/deputado/{ID}`, com o ID dos Dados Abertos
+  da Câmara.
+- Nos demais casos, abre a busca pelo nome de urna:
+  `https://olhonacota.com/deputados?busca={NOME}`.
+
+O ID da Câmara é obtido pelo `scripts/sync-tse.mjs`, que consulta a API de
+Dados Abertos da Câmara (`/api/v2/deputados` da legislatura 57 e o detalhe de
+cada deputado) e cruza com o TSE por CPF ou, na falta dele, por nome civil +
+data de nascimento. O CPF só é usado durante a sincronização e não é
+publicado. Se a Câmara estiver fora do ar, os IDs anteriores são mantidos.
+
 ## Impressão
 
 O botão **Imprimir colinha** chama `window.print()`. O CSS `@media print`

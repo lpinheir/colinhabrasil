@@ -3,6 +3,8 @@ import { useRef, useState } from "react";
 import type { Office, OfficeKey } from "@/config/election";
 import type { Candidate } from "@/lib/types";
 
+import { OlhoNaCotaLink } from "./OlhoNaCotaLink";
+
 export type Lookup =
   | { status: "idle" }
   | { status: "loading" }
@@ -104,7 +106,7 @@ function ColinhaRow({
         disabled ? "" : "cursor-text"
       } ${focused ? "bg-neutral-50" : ""}`}
       onClick={(e) => {
-        if (!(e.target as HTMLElement).closest("button")) input.current?.focus();
+        if (!(e.target as HTMLElement).closest("button, a")) input.current?.focus();
       }}
     >
       <Photo candidate={candidate} />
@@ -171,6 +173,7 @@ function ColinhaRow({
               {candidate.party}
             </p>
             <p className="text-xs text-neutral-600">{candidate.partyNumber}</p>
+            <OlhoNaCotaLink candidate={candidate} className="mt-1 block" />
           </>
         )}
       </div>
