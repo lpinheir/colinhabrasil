@@ -28,17 +28,21 @@ const OFFICE_CODES = new Set(["1", "3", "5", "6", "7", "8"]);
 const CAMARA_API = process.env.CAMARA_API ?? "https://dadosabertos.camara.leg.br/api/v2";
 const CAMARA_LEGISLATURE = 57; // 2023–2027
 
+// Os servidores do TSE e da Câmara recusam clientes que não parecem um navegador.
+const BROWSER_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+  "Accept-Language": "pt-BR,pt;q=0.9",
+};
+
 async function loadZip() {
   const localFile = process.argv[2];
   if (localFile) return new Uint8Array(await readFile(localFile));
 
   const res = await fetch(SOURCE_URL, {
-    // O CDN do TSE recusa clientes que não parecem um navegador.
     headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+      ...BROWSER_HEADERS,
       Accept: "application/zip,application/octet-stream,*/*",
-      "Accept-Language": "pt-BR,pt;q=0.9",
       Referer: "https://dadosabertos.tse.jus.br/dataset/candidatos-2026",
     },
   });
@@ -90,7 +94,10 @@ const isoDate = (s) => {
 async function getJson(url, attempts = 3) {
   for (let i = 1; ; i++) {
     try {
-      const res = await fetch(url, { headers: { Accept: "application/json" } });
+      const res = await fetch(url, {
+        headers: { ...BROWSER_HEADERS, Accept: "application/json" },
+        signal: AbortSignal.timeout(20_000),
+      });
       if (!res.ok) throw new Error(`${res.status} em ${url}`);
       return await res.json();
     } catch (err) {
@@ -225,7 +232,10 @@ try {
       (cpf.length === 11 && byCpf.get(cpf)) || byNameAndBirth.get(nameAndBirth),
   };
 } catch (err) {
-  console.warn(`Aviso: não foi possível consultar a Câmara (${err.message}). Mantendo IDs anteriores.`);
+  const cause = err.cause ? ` — ${err.cause.code ?? ""} ${err.cause.message ?? err.cause}` : "";
+  console.warn(
+    `Aviso: não foi possível consultar a Câmara (${err.message}${cause}). Mantendo IDs anteriores.`,
+  );
   const previous = await loadPreviousCamaraIds();
   camara = { find: (seq) => previous.get(seq) };
 }
