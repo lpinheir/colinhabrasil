@@ -26,7 +26,14 @@ async function loadZip() {
   if (localFile) return new Uint8Array(await readFile(localFile));
 
   const res = await fetch(SOURCE_URL, {
-    headers: { "User-Agent": "colinha-eleitoral/1.0 (+https://github.com/lpinheir/colinhabrasil)" },
+    // O CDN do TSE recusa clientes que não parecem um navegador.
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+      Accept: "application/zip,application/octet-stream,*/*",
+      "Accept-Language": "pt-BR,pt;q=0.9",
+      Referer: "https://dadosabertos.tse.jus.br/dataset/candidatos-2026",
+    },
   });
   if (!res.ok) throw new Error(`TSE respondeu ${res.status} ao baixar ${SOURCE_URL}`);
   return new Uint8Array(await res.arrayBuffer());
