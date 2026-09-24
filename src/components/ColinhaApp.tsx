@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import {
   OFFICES,
@@ -9,9 +9,11 @@ import {
   resolveOffice,
   type OfficeKey,
 } from "@/config/election";
+import { officeInfoKey, type OfficeInfoKey } from "@/config/offices-info";
 import type { Candidate } from "@/lib/types";
 
 import { Colinha } from "./Colinha";
+import { OfficeGuide } from "./OfficeGuide";
 
 type Lookup =
   | { status: "idle" }
@@ -28,6 +30,17 @@ export function ColinhaApp() {
   const [lookups, setLookups] = useState<Partial<Record<OfficeKey, Lookup>>>({});
   // Última consulta pedida por cargo, para descartar respostas antigas.
   const requested = useRef<Partial<Record<OfficeKey, string>>>({});
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [guideItem, setGuideItem] = useState<OfficeInfoKey | null>(null);
+
+  function showOfficeInfo(key: OfficeKey) {
+    const item = officeInfoKey(key);
+    setGuideOpen(true);
+    setGuideItem(item);
+    requestAnimationFrame(() =>
+      document.getElementById(`cargo-${item}`)?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+  }
 
   const state = isStateCode(uf) ? uf : undefined;
   const offices = OFFICES.map((o) => (state ? resolveOffice(o, state) : o));
@@ -77,6 +90,13 @@ export function ColinhaApp() {
         </p>
       </header>
 
+      <OfficeGuide
+        open={guideOpen}
+        onToggle={() => setGuideOpen((o) => !o)}
+        openItem={guideItem}
+        onItemToggle={(key) => setGuideItem((k) => (k === key ? null : key))}
+      />
+
       <form className="no-print flex flex-col gap-4" onSubmit={(e) => e.preventDefault()}>
         <label className="flex flex-col gap-1">
           <span className="text-sm font-semibold">Estado</span>
@@ -103,6 +123,7 @@ export function ColinhaApp() {
             disabled={!state}
             lookup={lookups[office.key] ?? { status: "idle" }}
             onChange={(value) => setNumbers((n) => ({ ...n, [office.key]: value }))}
+            onInfo={() => showOfficeInfo(office.key)}
             warning={
               office.key === "SENADOR_2" && sameSenator
                 ? "O mesmo número foi informado nas duas vagas de senador. A urna não aceita votar duas vezes no mesmo candidato."
@@ -153,6 +174,7 @@ function NumberField({
   disabled,
   lookup,
   onChange,
+  onInfo,
   warning,
 }: {
   label: string;
@@ -161,14 +183,26 @@ function NumberField({
   disabled: boolean;
   lookup: Lookup;
   onChange: (value: string) => void;
+  onInfo: () => void;
   warning?: string;
 }) {
+  const id = useId();
   return (
-    <label className="flex flex-col gap-1">
-      <span className="text-sm font-semibold">
-        {label} <span className="font-normal text-neutral-500">({digits} dígitos)</span>
-      </span>
+    <div className="flex flex-col gap-1">
+      <div className="flex items-baseline justify-between gap-2">
+        <label htmlFor={id} className="text-sm font-semibold">
+          {label} <span className="font-normal text-neutral-500">({digits} dígitos)</span>
+        </label>
+        <button
+          type="button"
+          onClick={onInfo}
+          className="shrink-0 text-xs font-semibold text-neutral-700 underline underline-offset-2"
+        >
+          O que faz?
+        </button>
+      </div>
       <input
+        id={id}
         type="text"
         inputMode="numeric"
         autoComplete="off"
@@ -182,7 +216,7 @@ function NumberField({
       />
       <LookupStatus lookup={lookup} />
       {warning && <span className="text-sm text-amber-700">{warning}</span>}
-    </label>
+    </div>
   );
 }
 
