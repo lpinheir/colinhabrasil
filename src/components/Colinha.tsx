@@ -173,7 +173,11 @@ function ColinhaRow({
               {candidate.party}
             </p>
             <p className="text-xs text-neutral-600">{candidate.partyNumber}</p>
-            <OlhoNaCotaLink candidate={candidate} className="mt-1 block" />
+            <OlhoNaCotaLink
+              candidate={candidate}
+              senate={office.key === "SENADOR_1" || office.key === "SENADOR_2"}
+              className="mt-1 block"
+            />
           </>
         )}
       </div>

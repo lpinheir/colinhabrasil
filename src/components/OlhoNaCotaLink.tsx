@@ -3,14 +3,17 @@ import type { Candidate } from "@/lib/types";
 
 export function OlhoNaCotaLink({
   candidate,
+  senate = false,
   className = "",
 }: {
   candidate: Pick<Candidate, "name" | "camaraId">;
+  /** Candidato a senador: sem ID da Câmara, busca entre os senadores. */
+  senate?: boolean;
   className?: string;
 }) {
   return (
     <a
-      href={olhoNaCotaUrl(candidate)}
+      href={olhoNaCotaUrl({ ...candidate, senate })}
       target="_blank"
       rel="noopener noreferrer"
       title={`Ver ${candidate.name} no Olho na Cota (abre em nova aba)`}

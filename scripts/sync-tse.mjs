@@ -12,9 +12,11 @@
  * aceita chamadas diretas do navegador (sem CORS), por isso os dados são
  * espelhados aqui em arquivos estáticos.
  *
- * Também cruza os candidatos com os deputados federais da legislatura atual
- * (API de Dados Abertos da Câmara) para guardar o ID da Câmara, usado no link
- * do Olho na Cota. O cruzamento usa CPF e, se faltar, nome civil + data de
+ * Também cruza os candidatos com os deputados federais em exercício (API de
+ * Dados Abertos da Câmara) para guardar o ID da Câmara, usado no link do Olho
+ * na Cota. Só os deputados em exercício entram: quem já saiu da Câmara (suplentes
+ * que deixaram o cargo, deputados que viraram prefeitos etc.) fica sem ID e
+ * recebe o link de busca por nome. O cruzamento usa CPF e, se faltar, nome civil + data de
  * nascimento. O CPF só é usado aqui e não vai para os arquivos publicados.
  */
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
@@ -26,7 +28,6 @@ const OUTPUT_DIR = new URL("../public/data/candidatos/", import.meta.url);
 // 1 Presidente, 3 Governador, 5 Senador, 6 Dep. Federal, 7 Dep. Estadual, 8 Dep. Distrital
 const OFFICE_CODES = new Set(["1", "3", "5", "6", "7", "8"]);
 const CAMARA_API = process.env.CAMARA_API ?? "https://dadosabertos.camara.leg.br/api/v2";
-const CAMARA_LEGISLATURE = 57; // 2023–2027
 
 // Os servidores do TSE e da Câmara recusam clientes que não parecem um navegador.
 const BROWSER_HEADERS = {
@@ -107,12 +108,13 @@ async function getJson(url, attempts = 3) {
   }
 }
 
-/** Deputados federais da legislatura atual, indexados por CPF e por nome civil + nascimento. */
+/** Deputados federais em exercício, indexados por CPF e por nome civil + nascimento. */
 async function loadCamaraDeputies() {
   const ids = new Set();
   for (let page = 1; ; page++) {
+    // Sem filtro de legislatura, a API devolve só os deputados em exercício.
     const body = await getJson(
-      `${CAMARA_API}/deputados?idLegislatura=${CAMARA_LEGISLATURE}&itens=100&pagina=${page}&ordem=ASC&ordenarPor=nome`,
+      `${CAMARA_API}/deputados?itens=100&pagina=${page}&ordem=ASC&ordenarPor=nome`,
     );
     const items = body.dados ?? [];
     for (const d of items) ids.add(String(d.id));
@@ -134,7 +136,7 @@ async function loadCamaraDeputies() {
     }
   };
   await Promise.all(Array.from({ length: 8 }, worker));
-  console.log(`Câmara: ${ids.size} deputados da legislatura ${CAMARA_LEGISLATURE}`);
+  console.log(`Câmara: ${ids.size} deputados em exercício`);
   return { byCpf, byNameAndBirth };
 }
 

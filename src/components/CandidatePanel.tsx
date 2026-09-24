@@ -252,7 +252,11 @@ function CandidateItem({
           {selected && <span className="block text-[11px] text-green-700">✓ na colinha</span>}
         </span>
       </button>
-      <OlhoNaCotaLink candidate={candidate} className="w-24 shrink-0 pr-4 text-center" />
+      <OlhoNaCotaLink
+        candidate={candidate}
+        senate={candidate.office === "SENADOR"}
+        className="w-24 shrink-0 pr-4 text-center"
+      />
     </li>
   );
 }
