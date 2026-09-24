@@ -5,12 +5,27 @@ import {
   type OfficeKey,
   type StateCode,
 } from "@/config/election";
+import type { OfficeInfoKey } from "@/config/offices-info";
 import type { Candidate } from "@/lib/types";
+
+type Row = [name: string, party: string, partyNumber: string, id: string, status: string];
 
 /** Formato de public/data/candidatos/{UF}.json (ver scripts/sync-tse.mjs). */
 type StateFile = {
-  offices: Record<string, Record<string, [name: string, party: string, partyNumber: string, id: string, status: string]>>;
+  offices: Record<string, Record<string, Row>>;
 };
+
+function toCandidate(row: Row, number: string, circunscricao: string): Candidate {
+  const [name, party, partyNumber, id, status] = row;
+  return {
+    number,
+    name,
+    party,
+    partyNumber,
+    photoUrl: `${ELECTION.photoBase}/${ELECTION.electionId}/${id}/${circunscricao}`,
+    status: status || undefined,
+  };
+}
 
 export class DataUnavailableError extends Error {}
 
@@ -53,15 +68,32 @@ export async function getCandidate({
   const circunscricao = resolved.national ? "BR" : state;
   const file = await loadStateFile(circunscricao);
   const row = file.offices[String(resolved.tseCode)]?.[number];
-  if (!row) return null;
+  return row ? toCandidate(row, number, circunscricao) : null;
+}
 
-  const [name, party, partyNumber, id, status] = row;
-  return {
-    number,
-    name,
-    party,
-    partyNumber,
-    photoUrl: `${ELECTION.photoBase}/${ELECTION.electionId}/${id}/${circunscricao}`,
-    status: status || undefined,
-  };
+export type ListedCandidate = Candidate & { office: OfficeInfoKey };
+
+const OFFICE_BY_TSE_CODE: Record<string, OfficeInfoKey> = {
+  "1": "PRESIDENTE",
+  "3": "GOVERNADOR",
+  "5": "SENADOR",
+  "6": "DEPUTADO_FEDERAL",
+  "7": "DEPUTADO_ESTADUAL",
+  "8": "DEPUTADO_ESTADUAL",
+};
+
+/** Todos os candidatos que o eleitor da UF pode escolher, incluindo presidente. */
+export async function listCandidates(state: StateCode): Promise<ListedCandidate[]> {
+  const [stateFile, national] = await Promise.all([loadStateFile(state), loadStateFile("BR")]);
+  const list: ListedCandidate[] = [];
+  for (const [circunscricao, file] of [[state, stateFile], ["BR", national]] as const) {
+    for (const [code, rows] of Object.entries(file.offices)) {
+      const office = OFFICE_BY_TSE_CODE[code];
+      if (!office || (circunscricao === "BR") !== (office === "PRESIDENTE")) continue;
+      for (const [number, row] of Object.entries(rows)) {
+        list.push({ ...toCandidate(row, number, circunscricao), office });
+      }
+    }
+  }
+  return list;
 }

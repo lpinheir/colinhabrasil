@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import {
   ELECTION,
@@ -11,14 +11,35 @@ import {
   type OfficeKey,
 } from "@/config/election";
 import { officeInfoKey, type OfficeInfoKey } from "@/config/offices-info";
-import { DataUnavailableError, getCandidate } from "@/lib/candidates";
+import {
+  DataUnavailableError,
+  getCandidate,
+  type ListedCandidate,
+} from "@/lib/candidates";
 
+import { CandidatePanel } from "./CandidatePanel";
 import { Colinha, type Lookup } from "./Colinha";
 import { OfficeGuide } from "./OfficeGuide";
 
 const emptyNumbers = Object.fromEntries(OFFICES.map((o) => [o.key, ""])) as Record<OfficeKey, string>;
 
+const DESKTOP_QUERY = "(min-width: 1024px)";
+
+/** O painel de candidatos só existe no desktop; no celular nem baixa a lista. */
+function useIsDesktop() {
+  return useSyncExternalStore(
+    (onChange) => {
+      const mql = window.matchMedia(DESKTOP_QUERY);
+      mql.addEventListener("change", onChange);
+      return () => mql.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia(DESKTOP_QUERY).matches,
+    () => false,
+  );
+}
+
 export function ColinhaApp() {
+  const isDesktop = useIsDesktop();
   const [uf, setUf] = useState("");
   const [numbers, setNumbers] = useState(emptyNumbers);
   const [lookups, setLookups] = useState<Partial<Record<OfficeKey, Lookup>>>({});
@@ -75,76 +96,96 @@ export function ColinhaApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, numbers]);
 
+  function pickCandidate(c: ListedCandidate) {
+    setNumbers((n) => {
+      if (c.office !== "SENADOR") return { ...n, [c.office]: c.number };
+      if (n.SENADOR_1 === c.number || n.SENADOR_2 === c.number) return n;
+      // Preenche a vaga de senador que estiver livre; com as duas ocupadas, troca a 2ª.
+      return n.SENADOR_1.length < 3
+        ? { ...n, SENADOR_1: c.number }
+        : { ...n, SENADOR_2: c.number };
+    });
+  }
+
   const sameSenator =
     numbers.SENADOR_1.length === 3 && numbers.SENADOR_1 === numbers.SENADOR_2;
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-5 px-4 py-5">
-      <header className="no-print">
+    <div className="mx-auto flex w-full max-w-md flex-col gap-5 px-4 py-5 lg:grid lg:max-w-7xl lg:grid-cols-[28rem_minmax(0,1fr)] lg:items-start lg:gap-8 lg:px-8 lg:py-8">
+      <header className="no-print lg:col-span-2">
         <h1 className="text-2xl font-extrabold tracking-tight">Colinha Eleitoral 2026</h1>
         <p className="mt-1 text-sm text-neutral-600">
           Escolha seu estado e toque nos quadradinhos de cada cargo para digitar o número do
-          seu candidato. Os dados vêm do TSE. Nada é salvo.
+          seu candidato.
+          <span className="hidden lg:inline">
+            {" "}
+            No computador, você também pode clicar em um candidato na lista ao lado.
+          </span>{" "}
+          Os dados vêm do TSE. Nada é salvo.
         </p>
       </header>
 
-      <OfficeGuide
-        open={guideOpen}
-        onToggle={() => setGuideOpen((o) => !o)}
-        openItem={guideItem}
-        onItemToggle={(key) => setGuideItem((k) => (k === key ? null : key))}
-      />
+      <div className="flex flex-col gap-5">
+        <OfficeGuide
+          open={guideOpen}
+          onToggle={() => setGuideOpen((o) => !o)}
+          openItem={guideItem}
+          onItemToggle={(key) => setGuideItem((k) => (k === key ? null : key))}
+        />
 
-      <label className="no-print flex flex-col gap-1">
-        <span className="text-sm font-semibold">Estado</span>
-        <select
-          value={uf}
-          onChange={(e) => setUf(e.target.value)}
-          className="h-12 rounded-lg border border-neutral-300 bg-white px-3 text-base"
-        >
-          <option value="">Selecione a UF</option>
-          {STATES.map((s) => (
-            <option key={s.code} value={s.code}>
-              {s.name} ({s.code})
-            </option>
-          ))}
-        </select>
-      </label>
+        <label className="no-print flex flex-col gap-1">
+          <span className="text-sm font-semibold">Estado</span>
+          <select
+            value={uf}
+            onChange={(e) => setUf(e.target.value)}
+            className="h-12 rounded-lg border border-neutral-300 bg-white px-3 text-base"
+          >
+            <option value="">Selecione a UF</option>
+            {STATES.map((s) => (
+              <option key={s.code} value={s.code}>
+                {s.name} ({s.code})
+              </option>
+            ))}
+          </select>
+        </label>
 
-      <Colinha
-        stateName={STATES.find((s) => s.code === state)?.name}
-        disabled={!state}
-        onNumberChange={(key, value) => setNumbers((n) => ({ ...n, [key]: value }))}
-        onInfo={showOfficeInfo}
-        entries={offices.map((office) => ({
-          office,
-          number: numbers[office.key],
-          lookup: lookups[office.key] ?? { status: "idle" },
-          warning:
-            office.key === "SENADOR_2" && sameSenator
-              ? "Mesmo número nas duas vagas de senador. A urna não aceita votar duas vezes no mesmo candidato."
-              : undefined,
-        }))}
-      />
+        <Colinha
+          stateName={STATES.find((s) => s.code === state)?.name}
+          disabled={!state}
+          onNumberChange={(key, value) => setNumbers((n) => ({ ...n, [key]: value }))}
+          onInfo={showOfficeInfo}
+          entries={offices.map((office) => ({
+            office,
+            number: numbers[office.key],
+            lookup: lookups[office.key] ?? { status: "idle" },
+            warning:
+              office.key === "SENADOR_2" && sameSenator
+                ? "Mesmo número nas duas vagas de senador. A urna não aceita votar duas vezes no mesmo candidato."
+                : undefined,
+          }))}
+        />
 
-      <div className="no-print flex flex-col gap-3">
-        <button
-          type="button"
-          onClick={() => window.print()}
-          className="h-12 rounded-lg bg-neutral-900 text-base font-bold uppercase tracking-wide text-white active:bg-neutral-700"
-        >
-          Imprimir colinha
-        </button>
-        <p className="text-xs text-neutral-600">
-          No celular, você também pode tirar um print da colinha acima. Atenção: é proibido
-          usar o celular na cabine de votação, então consulte antes de entrar ou leve a colinha
-          em papel.
-        </p>
-        <p className="text-xs text-neutral-500">
-          Ferramenta neutra e sem vínculo com partidos ou candidatos. Exibe apenas os números
-          digitados por você, com dados públicos do TSE (DivulgaCandContas).
-        </p>
+        <div className="no-print flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="h-12 rounded-lg bg-neutral-900 text-base font-bold uppercase tracking-wide text-white active:bg-neutral-700"
+          >
+            Imprimir colinha
+          </button>
+          <p className="text-xs text-neutral-600">
+            No celular, você também pode tirar um print da colinha acima. Atenção: é proibido
+            usar o celular na cabine de votação, então consulte antes de entrar ou leve a colinha
+            em papel.
+          </p>
+          <p className="text-xs text-neutral-500">
+            Ferramenta neutra e sem vínculo com partidos ou candidatos. Exibe apenas os números
+            digitados por você, com dados públicos do TSE (DivulgaCandContas).
+          </p>
+        </div>
       </div>
+
+      {isDesktop && <CandidatePanel state={state} numbers={numbers} onPick={pickCandidate} />}
     </div>
   );
 }

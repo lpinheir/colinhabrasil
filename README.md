@@ -46,6 +46,16 @@ git add public/data/candidatos && git commit -m "Atualiza dados do TSE" && git p
 
 Cargos, códigos e quantidade de dígitos ficam em `src/config/election.ts`.
 
+## Uso
+
+- **Celular:** escolha a UF e digite os números direto nos quadradinhos da
+  colinha; ao completar um número, o cursor pula para o próximo cargo.
+- **Computador (a partir de 1024 px de largura):** a colinha fica à esquerda e,
+  à direita, um painel lista todos os candidatos da UF (e os de presidente),
+  com foto, número e partido. Dá para filtrar por cargo e partido, buscar por
+  nome ou número e clicar num candidato para colocá-lo na colinha. A lista
+  segue a ordem da urna por cargo e a ordem alfabética dentro de cada cargo.
+
 ## Impressão
 
 O botão **Imprimir colinha** chama `window.print()`. O CSS `@media print`
