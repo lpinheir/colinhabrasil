@@ -23,23 +23,23 @@ import { OfficeGuide } from "./OfficeGuide";
 
 const emptyNumbers = Object.fromEntries(OFFICES.map((o) => [o.key, ""])) as Record<OfficeKey, string>;
 
-const DESKTOP_QUERY = "(min-width: 1024px)";
-
-/** O painel de candidatos só existe no desktop; no celular nem baixa a lista. */
-function useIsDesktop() {
+function useMediaQuery(query: string) {
   return useSyncExternalStore(
     (onChange) => {
-      const mql = window.matchMedia(DESKTOP_QUERY);
+      const mql = window.matchMedia(query);
       mql.addEventListener("change", onChange);
       return () => mql.removeEventListener("change", onChange);
     },
-    () => window.matchMedia(DESKTOP_QUERY).matches,
+    () => window.matchMedia(query).matches,
     () => false,
   );
 }
 
 export function ColinhaApp() {
-  const isDesktop = useIsDesktop();
+  // Painel de candidatos só no desktop (no celular nem baixa a lista).
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
+  // Telas largas têm uma terceira coluna para o guia de cargos.
+  const isWide = useMediaQuery("(min-width: 1280px)");
   const [uf, setUf] = useState("");
   const [numbers, setNumbers] = useState(emptyNumbers);
   const [lookups, setLookups] = useState<Partial<Record<OfficeKey, Lookup>>>({});
@@ -52,10 +52,19 @@ export function ColinhaApp() {
     const item = officeInfoKey(key);
     setGuideOpen(true);
     setGuideItem(item);
-    requestAnimationFrame(() =>
-      document.getElementById(`cargo-${item}`)?.scrollIntoView({ behavior: "smooth", block: "start" }),
-    );
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`cargo-${item}`);
+      // Na coluna lateral, rola só a coluna, sem mexer na página.
+      const column = el?.closest<HTMLElement>("[data-guide-column]");
+      if (el && column) column.scrollTo({ top: el.offsetTop, behavior: "smooth" });
+      else el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
+
+  // Na coluna lateral há espaço, então o guia já começa aberto.
+  useEffect(() => {
+    if (isWide) setGuideOpen(true);
+  }, [isWide]);
 
   const state = isStateCode(uf) ? uf : undefined;
   const offices = OFFICES.map((o) => (state ? resolveOffice(o, state) : o));
@@ -110,9 +119,18 @@ export function ColinhaApp() {
   const sameSenator =
     numbers.SENADOR_1.length === 3 && numbers.SENADOR_1 === numbers.SENADOR_2;
 
+  const guide = (
+    <OfficeGuide
+      open={guideOpen}
+      onToggle={() => setGuideOpen((o) => !o)}
+      openItem={guideItem}
+      onItemToggle={(key) => setGuideItem((k) => (k === key ? null : key))}
+    />
+  );
+
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-5 px-4 py-5 lg:grid lg:max-w-7xl lg:grid-cols-[28rem_minmax(0,1fr)] lg:items-start lg:gap-8 lg:px-8 lg:py-8">
-      <header className="no-print lg:col-span-2">
+    <div className="mx-auto flex w-full max-w-md flex-col gap-5 px-4 py-5 lg:grid lg:max-w-7xl lg:grid-cols-[28rem_minmax(0,1fr)] lg:items-start lg:gap-8 lg:px-8 lg:py-8 xl:max-w-[100rem] xl:grid-cols-[28rem_minmax(0,1fr)_22rem]">
+      <header className="no-print lg:col-span-full">
         <h1 className="text-2xl font-extrabold tracking-tight">Colinha Eleitoral 2026</h1>
         <p className="mt-1 text-sm text-neutral-600">
           Escolha seu estado e toque nos quadradinhos de cada cargo para digitar o número do
@@ -126,12 +144,7 @@ export function ColinhaApp() {
       </header>
 
       <div className="flex flex-col gap-5">
-        <OfficeGuide
-          open={guideOpen}
-          onToggle={() => setGuideOpen((o) => !o)}
-          openItem={guideItem}
-          onItemToggle={(key) => setGuideItem((k) => (k === key ? null : key))}
-        />
+        {!isWide && guide}
 
         <label className="no-print flex flex-col gap-1">
           <span className="text-sm font-semibold">Estado</span>
@@ -186,6 +199,15 @@ export function ColinhaApp() {
       </div>
 
       {isDesktop && <CandidatePanel state={state} numbers={numbers} onPick={pickCandidate} />}
+
+      {isWide && (
+        <div
+          data-guide-column
+          className="no-print sticky top-8 max-h-[calc(100dvh-4rem)] overflow-y-auto rounded-lg"
+        >
+          {guide}
+        </div>
+      )}
     </div>
   );
 }

@@ -118,7 +118,7 @@ export function CandidatePanel({
             colinha.
           </p>
         </div>
-        <div className="grid grid-cols-1 gap-2 xl:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2">
           <select
             aria-label="Filtrar por cargo"
             value={office}
@@ -157,7 +157,7 @@ export function CandidatePanel({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             disabled={!list}
-            className="h-10 rounded-md border border-neutral-300 bg-white px-2 text-sm disabled:bg-neutral-100"
+            className="col-span-2 h-10 rounded-md border border-neutral-300 bg-white px-2 text-sm disabled:bg-neutral-100"
           />
         </div>
         {list && (
